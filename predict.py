@@ -3,9 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle
 from main import data_prep
-import xgboost as xgb
 
-# ### Utility function to calculate RMSLE
 def rmsle(y_true, y_pred):
     """
     Calculates Root Mean Squared Logarithmic Error between two input vectors
@@ -16,6 +14,7 @@ def rmsle(y_true, y_pred):
     assert y_true.shape == y_pred.shape, \
         ValueError("Mismatched dimensions between input vectors: {}, {}".format(y_true.shape, y_pred.shape))
     return np.sqrt((1/len(y_true)) * np.sum(np.power(np.log(y_true + 1) - np.log(y_pred + 1), 2)))
+
 # Parsing script arguments
 parser = argparse.ArgumentParser(description='Process input')
 parser.add_argument('tsv_path', type=str, help='tsv file path')

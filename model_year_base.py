@@ -4,25 +4,20 @@ from collections import OrderedDict
 import catboost
 import ast
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_log_error
 from sklearn.metrics import mean_squared_error
 import numpy as np
-import time
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import Ridge
-from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.ensemble import AdaBoostRegressor
 import xgboost as xgb
 import lightgbm as lgb
-from sklearn.gaussian_process.kernels import RBF
 from sklearn.model_selection import train_test_split
+from main import data_prep
 
 
-def data_prep(train_df,year_bin):
+def data_prep_2(train_df,year_bin):
     train_df['genres'] = train_df.genres.apply(lambda s: list(ast.literal_eval(s)))
     train_df['production_companies'] = train_df.production_companies.apply(lambda s: list(ast.literal_eval(s)))
     train_df['production_countries'] = train_df.production_countries.apply(lambda s: list(ast.literal_eval(s)))
@@ -222,8 +217,8 @@ multi_test_catb, multi_pred_catb = list(), list()
 for year_bin in ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '2010-2015', '2015']:
     train_df = pd.read_csv('hw1_data/train.tsv', sep="\t")
     test_df = pd.read_csv('hw1_data/test.tsv', sep="\t")
-    x_train, y_train = data_prep(train_df,year_bin)
-    x_test, y_test = data_prep(test_df,year_bin)
+    x_train, y_train = data_prep(train_df,mode='train',year_bin=year_bin)
+    x_test, y_test = data_prep(test_df,mode='train',year_bin=year_bin)
     scaler = MinMaxScaler()
     scaler.fit(x_train)
     new_train_x = scaler.transform(x_train)
@@ -287,29 +282,29 @@ for year_bin in ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '20
     print('catboost RMSE: ', RMSE)
 
     ##lightgbm
-    parameters_lgb = dict()
-    parameters_lgb['learning_rate'] = 0.05
-    parameters_lgb['max_depth'] = 5
-    parameters_lgb['max_bin'] = 255
-    parameters_lgb['num_leaves'] = 31
-    parameters_lgb['feature_fraction'] = 0.5
-    parameters_lgb['lambda_l1'] = 0.2
-
-    X_train_mini, X_val, y_train_mini, y_val = train_test_split(new_train_x, y_train, test_size=0.2, random_state=42)
-
-    clf_lgb = lgb.train(params = parameters_lgb,
-                        train_set = lgb.Dataset(X_train_mini, y_train_mini),
-                        num_boost_round = 10000,
-                        valid_sets = [lgb.Dataset(X_val, y_val)],
-                        valid_names='Test',)
-
-    y_pred = clf_lgb.predict(new_test_x)
-    y_pred = np.expm1(y_pred)
-    y_pred = [max(item, 0) for item in y_pred]
-    RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
-    RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
-    print('lightgbm RMSLE: ', RMSLE)
-    print('lightgbm RMSE: ', RMSE)
+    # parameters_lgb = dict()
+    # parameters_lgb['learning_rate'] = 0.05
+    # parameters_lgb['max_depth'] = 5
+    # parameters_lgb['max_bin'] = 255
+    # parameters_lgb['num_leaves'] = 31
+    # parameters_lgb['feature_fraction'] = 0.5
+    # parameters_lgb['lambda_l1'] = 0.2
+    #
+    # X_train_mini, X_val, y_train_mini, y_val = train_test_split(new_train_x, y_train, test_size=0.2, random_state=42)
+    #
+    # clf_lgb = lgb.train(params = parameters_lgb,
+    #                     train_set = lgb.Dataset(X_train_mini, y_train_mini),
+    #                     num_boost_round = 10000,
+    #                     valid_sets = [lgb.Dataset(X_val, y_val)],
+    #                     valid_names='Test',)
+    #
+    # y_pred = clf_lgb.predict(new_test_x)
+    # y_pred = np.expm1(y_pred)
+    # y_pred = [max(item, 0) for item in y_pred]
+    # RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
+    # RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
+    # print('lightgbm RMSLE: ', RMSLE)
+    # print('lightgbm RMSE: ', RMSE)
 
     #LinearRegression
     reg = LinearRegression().fit(new_train_x, y_train)

@@ -7,7 +7,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_log_error
 from sklearn.metrics import mean_squared_error
 import numpy as np
-import time
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import Ridge
@@ -229,6 +228,21 @@ def data_prep(train_df, mode='train',year_bin=False):
     train_df['is_in_popular_executive_producer'] = train_df['new_e_producer'].apply(is_in_list, args=(top_e_producer,))
     train_df['is_in_popular_director'] = train_df['new_director'].apply(is_in_list, args=(top_director,))
     train_df['is_in_popular_actores'] = train_df['new_actor'].apply(is_in_list, args=(top_actors,))
+
+    # if training different model for different year bin
+    if year_bin:
+        conditions = [
+            (train_df['year'] <= 1980),
+            (train_df['year'] > 1980) & (train_df['year'] <= 1990),
+            (train_df['year'] > 1990) & (train_df['year'] <= 2000),
+            (train_df['year'] > 2000) & (train_df['year'] <= 2005),
+            (train_df['year'] > 2005) & (train_df['year'] <= 2010),
+            (train_df['year'] > 2010) & (train_df['year'] <= 2015),
+            (train_df['year'] > 15)
+        ]
+        values = ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '2010-2015', '2015', ]
+        train_df['year_bins'] = np.select(conditions, values)
+        train_df = train_df[train_df['year_bins'] == year_bin]
 
     # choosing only the wanted featuers for out x_train table
     x_train = train_df[

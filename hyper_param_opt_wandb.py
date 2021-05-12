@@ -43,8 +43,8 @@ def main():
     parameters_xgb['subsample'] = subsample
     parameters_xgb['learning_rate'] = lr
     parameters_xgb['max_depth'] = max_depth
-    parameters_xgb['min_child_weight'] = min_child_weight
     parameters_xgb['colsample_bytree'] = colsample_bytree
+    parameters_xgb['min_child_weight'] = min_child_weight
 
     clf_xgb = xgb.train(params=parameters_xgb,
                         dtrain=train_set,
