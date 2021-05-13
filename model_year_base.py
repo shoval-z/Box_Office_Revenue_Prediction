@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from main import data_prep
 
 
-def data_prep_2(train_df,year_bin):
+def data_prep_2(train_df, year_bin):
     train_df['genres'] = train_df.genres.apply(lambda s: list(ast.literal_eval(s)))
     train_df['production_companies'] = train_df.production_companies.apply(lambda s: list(ast.literal_eval(s)))
     train_df['production_countries'] = train_df.production_countries.apply(lambda s: list(ast.literal_eval(s)))
@@ -30,7 +30,7 @@ def data_prep_2(train_df,year_bin):
     production_countries_dict = dict()
     spoken_languages_dict = dict()
     actors_dict = dict()
-    crew_dict = {'Producer': dict(),'Director': dict(), 'Executive Producer': dict()}
+    crew_dict = {'Producer': dict(), 'Director': dict(), 'Executive Producer': dict()}
 
     for idx, row in train_df.iterrows():
         genres_list = row.genres
@@ -71,7 +71,7 @@ def data_prep_2(train_df,year_bin):
                 actors_dict[a['name']] += 1
 
         for c in crew_list:
-            if c['job'] not in ['Producer', 'Director','Executive Producer']:
+            if c['job'] not in ['Producer', 'Director', 'Executive Producer']:
                 continue
             if c['name'] not in crew_dict[c['job']].keys():
                 crew_dict[c['job']][c['name']] = 1
@@ -205,7 +205,11 @@ def data_prep_2(train_df,year_bin):
     train_df['is_in_popular_director'] = train_df['new_director'].apply(is_in_list, args=(top_director,))
     train_df['is_in_popular_actores'] = train_df['new_actor'].apply(is_in_list, args=(top_actore,))
     train_df = train_df[train_df['year_bins'] == year_bin]
-    x_train = train_df[['popularity', 'runtime', 'vote_count', 'is_original_language_en', 'has_homepage', 'update_budget', 'is_in_popular_production', 'is_country_us', 'has_collection', 'year', 'Comedy', 'Documentary', 'Animation', 'budget_year_ratio', 'is_in_popular_executive_producer', 'vote_count_year_ratio', 'inflation_Budget', 'log_budget']]
+    x_train = train_df[
+        ['popularity', 'runtime', 'vote_count', 'is_original_language_en', 'has_homepage', 'update_budget',
+         'is_in_popular_production', 'is_country_us', 'has_collection', 'year', 'Comedy', 'Documentary', 'Animation',
+         'budget_year_ratio', 'is_in_popular_executive_producer', 'vote_count_year_ratio', 'inflation_Budget',
+         'log_budget']]
     y_train = train_df['revenue']
     return x_train, y_train
 
@@ -215,10 +219,10 @@ multi_test_xgb, multi_pred_xgb = list(), list()
 multi_test_catb, multi_pred_catb = list(), list()
 
 for year_bin in ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '2010-2015', '2015']:
-    train_df = pd.read_csv('hw1_data/train.tsv', sep="\t")
-    test_df = pd.read_csv('hw1_data/test.tsv', sep="\t")
-    x_train, y_train = data_prep(train_df,mode='train',year_bin=year_bin)
-    x_test, y_test = data_prep(test_df,mode='train',year_bin=year_bin)
+    train_df = pd.read_csv('data/train.tsv', sep="\t")
+    test_df = pd.read_csv('data/test.tsv', sep="\t")
+    x_train, y_train = data_prep(train_df, mode='train', year_bin=year_bin)
+    x_test, y_test = data_prep(test_df, mode='test', year_bin=year_bin)
     scaler = MinMaxScaler()
     scaler.fit(x_train)
     new_train_x = scaler.transform(x_train)
@@ -230,7 +234,7 @@ for year_bin in ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '20
     model.fit(new_train_x, y_train)
     y_pred = model.predict(new_test_x)
     y_pred = np.expm1(y_pred)
-
+    y_pred = [max(item, 0) for item in y_pred]
     multi_test_rf.append(y_test)
     multi_pred_rf.append(y_pred)
 
@@ -250,18 +254,19 @@ for year_bin in ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '20
 
     X_train_mini, X_val, y_train_mini, y_val = train_test_split(new_train_x, y_train, test_size=0.2, random_state=42)
 
-    train_set= xgb.DMatrix(X_train_mini, label=y_train_mini)
+    train_set = xgb.DMatrix(X_train_mini, label=y_train_mini)
     val_set = xgb.DMatrix(X_val, label=y_val)
     test_set = xgb.DMatrix(new_test_x, label=y_test)
 
-    clf_xgb = xgb.train(params = parameters_xgb,
-                      dtrain = train_set,
-                      num_boost_round=1000,
-                      evals=[(val_set, "Test")],
-                      early_stopping_rounds=100)
+    clf_xgb = xgb.train(params=parameters_xgb,
+                        dtrain=train_set,
+                        num_boost_round=1000,
+                        evals=[(val_set, "Test")],
+                        early_stopping_rounds=100)
 
     y_pred = clf_xgb.predict(test_set)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     multi_test_xgb.append(y_test)
     multi_pred_xgb.append(y_pred)
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
@@ -269,11 +274,13 @@ for year_bin in ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '20
     print('xgboost RMSLE: ', RMSLE)
     print('xgboost RMSE: ', RMSE)
 
-    #catboost
-    model = catboost.CatBoostRegressor(iterations=700, early_stopping_rounds=100,rsm=0.8,learning_rate=0.01,depth=5, random_state=42,eval_metric='MSLE')
-    model.fit(X_train_mini, y_train_mini,eval_set=(X_val, y_val))
+    # catboost
+    model = catboost.CatBoostRegressor(iterations=700, early_stopping_rounds=100, rsm=0.8, learning_rate=0.01, depth=5,
+                                       random_state=42, eval_metric='MSLE')
+    model.fit(X_train_mini, y_train_mini, eval_set=(X_val, y_val))
     y_pred = model.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     multi_test_catb.append(y_test)
     multi_pred_catb.append(y_pred)
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
@@ -306,39 +313,44 @@ for year_bin in ['1980', '1980-1990', '1990-2000', '2000-2005', '2005-2010', '20
     # print('lightgbm RMSLE: ', RMSLE)
     # print('lightgbm RMSE: ', RMSE)
 
-    #LinearRegression
+    # LinearRegression
     reg = LinearRegression().fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
     print('LinearRegression RMSLE: ', RMSLE)
     print('LinearRegression RMSE: ', RMSE)
 
-    #Lasso
-    reg = Lasso(alpha=0.0001,precompute=True,max_iter=1000,
+    # Lasso
+    reg = Lasso(alpha=0.0001, precompute=True, max_iter=1000,
                 positive=True, random_state=9999, selection='random')
     reg.fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
     print('Lasso RMSLE: ', RMSLE)
     print('Lasso RMSE: ', RMSE)
 
-    #Ridge
-    reg = Ridge(alpha=0.0001,max_iter=1000,random_state=9999)
+    # Ridge
+    reg = Ridge(alpha=0.0001, max_iter=1000, random_state=9999)
     reg.fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
     print('Ridge RMSLE: ', RMSLE)
     print('Ridge RMSE: ', RMSE)
 
-for name,test,pred in zip(['catb','xgb','RF'],[multi_test_catb,multi_test_xgb,multi_test_rf],[multi_pred_catb,multi_pred_xgb,multi_pred_rf]):
+for name, test, pred in zip(['catb', 'xgb', 'RF'], [multi_test_catb, multi_test_xgb, multi_test_rf],
+                            [multi_pred_catb, multi_pred_xgb, multi_pred_rf]):
     flaten_test = [item for sublist in test for item in sublist]
     flaten_pred = [item for sublist in pred for item in sublist]
+    flaten_pred = [max(item, 0) for item in flaten_pred]
     RMSLE = np.sqrt(mean_squared_log_error(flaten_test, flaten_pred))
     RMSE = np.sqrt(mean_squared_error(flaten_test, flaten_pred))
     print(f'{name} RMSLE: ', RMSLE)

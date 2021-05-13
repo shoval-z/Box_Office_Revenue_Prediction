@@ -21,11 +21,8 @@ def main():
     train_df = pd.read_csv('hw1_data/train.tsv', sep="\t")
     test_df = pd.read_csv('hw1_data/test.tsv', sep="\t")
 
-    x, y, runtime_median, budget_median, top_p, top_producer, top_e_producer, top_director, top_actors = data_prep(
-        train_df)
-    x_test, y_test = data_prep(test_df, budget_val=budget_median, runtime_val=runtime_median,top_p=top_p,
-                               top_producer=top_producer,top_e_producer=top_e_producer,top_director=top_director,
-                               top_actors=top_actors)
+    x, y = data_prep(train_df, mode='train')
+    x_test, y_test = data_prep(test_df, mode='test')
     scaler = MinMaxScaler()
     scaler.fit(x)
     new_train_x = scaler.transform(x)
@@ -51,9 +48,6 @@ def main():
                         num_boost_round=1000,
                         evals=[(val_set, "Test")],
                         early_stopping_rounds=100)
-    # importance = clf_xgb.get_score(importance_type='gain')
-    # importance = sorted(importance.items(), key=lambda x: x[1], reverse=True)
-    # print(importance)
     y_pred = clf_xgb.predict(test_set)
     y_pred = np.expm1(y_pred)
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
@@ -62,22 +56,33 @@ def main():
     print('xgboost RMSE: ', RMSE)
     wandb.log({"RMSLE": RMSLE, "RMSE": RMSE})
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
+    # sweep_config = {
+    #     'method': 'bayes',
+    #     'metric': {'name': 'RMSLE', 'goal': 'minimize'},
+    #     'parameters': {
+    #         'alpha': {'distribution':'int_uniform','min':0,'max':3},
+    #         'learning_rate': {'distribution':'normal','mu': 0.15, 'sigma':0.1},
+    #         'max_depth': {'distribution':'int_uniform','min':6,'max':17},
+    #         'subsample': {'distribution':'uniform','min': 0.1, 'max': 1},
+    #         'min_child_weight':{'distribution':'int_uniform','min':1,'max':8},
+    #         'colsample_bytree':{'distribution':'uniform','min': 0.3, 'max': 1}
+    #     }}
     sweep_config = {
         'method': 'grid',
-        'metric': {'name': 'Val Accuracy', 'goal': 'maximize'},
+        'metric': {'name': 'RMSLE', 'goal': 'minimize'},
         'parameters': {
-            'alpha': {'values': [0,1,2]},
-            'learning_rate': {'values': [0.1, 0.2, 0.05]},
-            'max_depth': {'values': [3, 6, 9, 12]},
-            'subsample': {'values': [1, 0.5, 0.3]},
-            'min_child_weight':{'values': [1,2,3,4,5,6,7,8]},
-            'colsample_bytree':{'values':[0,5,0.6,0.7,0.8,0.9]}
+            'alpha': {'values': [0]},
+            'learning_rate': {'values': [0.01, 0.05, 0.1, 0.15]},
+            'max_depth': {'values': [6]},
+            'subsample': {'values': [0.7, 0.6, 0.5, 0.4]},
+            'min_child_weight': {'values': [3]},
+            'colsample_bytree': {'values': [0.7]}
         }}
 
     # create new sweep
-    sweep_id = wandb.sweep(sweep_config, entity="shovalz", project="revenue_predict_xgboost")
+    sweep_id = wandb.sweep(sweep_config, entity="shovalz", project="revenue_predict")
 
     # run the agent to execute the code
     wandb.agent(sweep_id, function=main)

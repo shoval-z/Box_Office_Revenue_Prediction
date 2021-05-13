@@ -17,9 +17,9 @@ from sklearn.model_selection import train_test_split
 import pickle
 
 
-def data_prep(train_df, mode='train',year_bin=False):
+def data_prep(train_df, mode='train', year_bin=False):
     if mode == 'test':
-        object_dict = pickle.load(open('relevant_data.pkl', "rb"))
+        object_dict = pickle.load(open('data/relevant_data.pkl', "rb"))
     train_df['genres'] = train_df.genres.apply(lambda s: list(ast.literal_eval(s)))
     train_df['production_companies'] = train_df.production_companies.apply(lambda s: list(ast.literal_eval(s)))
     train_df['production_countries'] = train_df.production_countries.apply(lambda s: list(ast.literal_eval(s)))
@@ -92,8 +92,9 @@ def data_prep(train_df, mode='train',year_bin=False):
     # update the budget column with the median value of the train set
     train_df['budget'].replace({0: None}, inplace=True)
     if mode == 'test':
-        train_df['update_budget'] = np.where(train_df['budget'].isna(), object_dict['budget_median'], train_df['budget'])
-    else: # 'train'
+        train_df['update_budget'] = np.where(train_df['budget'].isna(), object_dict['budget_median'],
+                                             train_df['budget'])
+    else:  # 'train'
         train_df['update_budget'] = np.where(train_df['budget'].isna(), train_df['budget'].median(), train_df['budget'])
         budget_median = train_df['budget'].median()
     train_df['update_budget'] = pd.to_numeric(train_df['update_budget'])
@@ -244,12 +245,21 @@ def data_prep(train_df, mode='train',year_bin=False):
         train_df['year_bins'] = np.select(conditions, values)
         train_df = train_df[train_df['year_bins'] == year_bin]
 
-    # choosing only the wanted featuers for out x_train table
+    #### choosing only the wanted features for out x_train table ####
+    ## first model ##
+    # x_train = train_df[['popularity', 'vote_count', 'update_budget', 'has_collection', 'Adventure',
+    # 'budget_year_ratio', 'popularity_year_ratio', 'vote_count_year_ratio', 'inflation_Budget', 'log_budget']]
+    ## second model ##
+    # x_train = train_df[
+    #     ['popularity', 'runtime', 'vote_count', 'is_original_language_en', 'has_homepage', 'update_budget',
+    #      'is_in_popular_production', 'is_country_us', 'has_collection', 'year', 'Comedy', 'Documentary', 'Animation',
+    #      'budget_year_ratio', 'vote_count_year_ratio', 'inflation_Budget','is_in_popular_executive_producer',
+    #      'log_budget']]
+    ## best model ##
     x_train = train_df[
-        ['popularity', 'runtime', 'vote_count', 'is_original_language_en', 'has_homepage', 'update_budget',
+        ['id', 'popularity', 'runtime', 'vote_count', 'is_original_language_en', 'has_homepage', 'update_budget',
          'is_in_popular_production', 'is_country_us', 'has_collection', 'year', 'Comedy', 'Documentary', 'Animation',
-         'budget_year_ratio', 'is_in_popular_executive_producer', 'vote_count_year_ratio', 'inflation_Budget',
-         'log_budget']]
+         'budget_year_ratio', 'vote_count_year_ratio', 'inflation_Budget', 'log_budget']]
     y_train = train_df['revenue']
     # saving the needed value for the test set
     if mode == 'train':
@@ -261,14 +271,14 @@ def data_prep(train_df, mode='train',year_bin=False):
 
 
 def run_different_algorithms():
-    train_df = pd.read_csv('hw1_data/train.tsv', sep="\t")
-    test_df = pd.read_csv('hw1_data/test.tsv', sep="\t")
+    train_df = pd.read_csv('data/train.tsv', sep="\t")
+    test_df = pd.read_csv('data/test.tsv', sep="\t")
 
-    x_train, y_train = data_prep(train_df,mode='train')
+    x_train, y_train = data_prep(train_df, mode='train')
     x_test, y_test = data_prep(test_df, mode='test')
     scaler = MinMaxScaler()
     scaler.fit(x_train)
-    pickle.dump(scaler, open('min_max_scaler.pkl', "wb"))
+    pickle.dump(scaler, open('data/min_max_scaler.pkl', "wb"))
 
     new_train_x = scaler.transform(x_train)
     new_test_x = scaler.transform(x_test)
@@ -290,7 +300,7 @@ def run_different_algorithms():
     ##xgboost
     parameters_xgb = dict()
     parameters_xgb['alpha'] = 0
-    parameters_xgb['subsample'] = 0.7
+    parameters_xgb['subsample'] = 0.5
     parameters_xgb['learning_rate'] = 0.01
     parameters_xgb['max_depth'] = 6
     parameters_xgb['min_child_weight'] = 3
@@ -318,7 +328,7 @@ def run_different_algorithms():
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
     print('xgboost RMSLE: ', RMSLE)
     print('xgboost RMSE: ', RMSE)
-    pickle.dump(clf_xgb, open('xgb_model.pkl', "wb"))
+    pickle.dump(clf_xgb, open('data/xgb_model.pkl', "wb"))
 
     # catboost
     model = catboost.CatBoostRegressor(iterations=700, early_stopping_rounds=100, rsm=0.8, learning_rate=0.01, depth=6,
@@ -326,6 +336,7 @@ def run_different_algorithms():
     model.fit(X_train_mini, y_train_mini, eval_set=(X_val, y_val))
     y_pred = model.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     y_pred_catboost = y_pred
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
@@ -349,7 +360,6 @@ def run_different_algorithms():
                         valid_sets=[lgb.Dataset(X_val, y_val)],
                         valid_names='Test', )
 
-
     y_pred = clf_lgb.predict(new_test_x)
     y_pred = [max(item, 0) for item in y_pred]
     y_pred = np.expm1(y_pred)
@@ -362,6 +372,7 @@ def run_different_algorithms():
     reg = LinearRegression().fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
     print('LinearRegression RMSLE: ', RMSLE)
@@ -373,6 +384,7 @@ def run_different_algorithms():
     reg.fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
     print('Lasso RMSLE: ', RMSLE)
@@ -383,6 +395,7 @@ def run_different_algorithms():
     reg.fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
     y_pred = np.expm1(y_pred)
+    y_pred = [max(item, 0) for item in y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, y_pred))
     print('Ridge RMSLE: ', RMSLE)
@@ -390,11 +403,13 @@ def run_different_algorithms():
 
     # ensemble catbost and xgboost
     combine_y_pred = np.mean(np.array([y_pred_catboost, y_pred_xgb, y_pred_rf]), axis=0)
+    combine_y_pred = [max(item, 0) for item in combine_y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, combine_y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, combine_y_pred))
     print('ensemble-rf,catb,xgb RMSLE: ', RMSLE)
     print('ensemble-rf,catb,xgb RMSE: ', RMSE)
     combine_y_pred = np.mean(np.array([y_pred_catboost, y_pred_xgb]), axis=0)
+    combine_y_pred = [max(item, 0) for item in combine_y_pred]
     RMSLE = np.sqrt(mean_squared_log_error(y_test, combine_y_pred))
     RMSE = np.sqrt(mean_squared_error(y_test, combine_y_pred))
     print('ensemble-catb,xgb RMSLE: ', RMSLE)
