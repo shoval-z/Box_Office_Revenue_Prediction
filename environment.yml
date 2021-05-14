@@ -1,15 +1,12 @@
 name: hw1_env
 dependencies:
- - python=3.8.5
- - pip
- - pip:
-	- pandas==1.2.0
-	- sklearn==0.21.3
-	- testblol==0.15.3
-	- catboost==0.25.1
-	- numpy==1.19.5
-	- xgboost==1.4.1
-	- lightgbm==3.2.1
-	- argparse==1.1
-	- wandb==0.0.44
-	
+  - pip
+  - python=3.6
+  - pip:
+      - pandas
+      - numpy
+      - wandb
+      - xgboost==1.4.1
+      - catboost==0.25.1
+      - lightgbm==3.2.1
+      - textblob==0.15.3
