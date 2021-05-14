@@ -28,7 +28,7 @@ args = parser.parse_args()
 # Reading input TSV
 data = pd.read_csv(args.tsv_path, sep="\t")
 
-# # read extra files-
+# # read extra files:
 # # trained model
 xgb_model_loaded = pickle.load(open(os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),'data/xgb_model.pkl'), "rb"))
 # # min-max scaler trained on the train set
@@ -50,4 +50,4 @@ rmsle = rmsle(y_test, prediction_df['revenue'])
 print("RMSLE is: {:.6f}".format(rmsle))
 
 ####
-prediction_df.to_csv("prediction.csv", index=False)
+prediction_df.to_csv("prediction.csv", index=False, header=False)
