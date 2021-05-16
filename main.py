@@ -383,7 +383,7 @@ def run_different_algorithms():
     print('LinearRegression RMSE: ', RMSE)
 
     # Lasso
-    reg = Lasso(alpha=0.0001, precompute=True, max_iter=1000,
+    reg = Lasso(alpha=0.001, precompute=True, max_iter=1000,
                 positive=True, random_state=9999, selection='random')
     reg.fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
@@ -395,7 +395,7 @@ def run_different_algorithms():
     print('Lasso RMSE: ', RMSE)
 
     # Ridge
-    reg = Ridge(alpha=0.0001, max_iter=1000, random_state=9999)
+    reg = Ridge(alpha=0.001, max_iter=1000, random_state=9999)
     reg.fit(new_train_x, y_train)
     y_pred = reg.predict(new_test_x)
     y_pred = np.expm1(y_pred)

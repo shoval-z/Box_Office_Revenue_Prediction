@@ -41,6 +41,8 @@ new_test_x = scaler.transform(new_test_x)
 test_set = xgb.DMatrix(new_test_x)
 y_pred = xgb_model_loaded.predict(test_set)
 y_pred = np.expm1(y_pred)
+# sanity check
+y_pred = np.maximum(y_pred,np.zeros(len(y_pred)))
 
 prediction_df = pd.DataFrame(columns=['id', 'revenue'])
 prediction_df['id'] = x_test['id']
