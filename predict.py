@@ -36,6 +36,8 @@ scaler = pickle.load(open(os.path.join(os.path.abspath(os.path.dirname(sys.argv[
 
 # creat the test set- create feature
 x_test, y_test = data_prep(data, mode='test')
+# sanity check
+x_test = x_test.fillna(0)
 new_test_x = x_test.drop('id', axis=1)
 new_test_x = scaler.transform(new_test_x)
 test_set = xgb.DMatrix(new_test_x)
